@@ -36,10 +36,6 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemAvatar
 } from "@mui/material";
 import {
     ArrowBack as ArrowBackIcon,
@@ -48,7 +44,6 @@ import {
     AccessTime as AccessTimeIcon,
     CalendarToday as CalendarIcon,
     Work as WorkIcon,
-    Group as GroupIcon,
     Assignment as AssignmentIcon,
     Timeline as TimelineIcon,
     People as PeopleIcon,
@@ -60,7 +55,6 @@ import {
     Task as TaskIcon,
     Person as PersonIcon,
     Email as EmailIcon,
-    Phone as PhoneIcon,
     DateRange as DateRangeIcon,
     Replay as ReplayIcon,
     Close as CloseIcon
@@ -80,7 +74,6 @@ import {
 import { getUsersByRole } from "../users/userService.js";
 import useAccess from "../../hooks/useAccess";
 
-// Task Status Mapping
 const TASK_STATUS = {
     PENDING: 'PENDING',
     COMPLETED: 'COMPLETED',
@@ -88,16 +81,15 @@ const TASK_STATUS = {
     REJECTED: 'REJECTED'
 };
 
-// Task Action Status Mapping
 const TASK_ACTION_STATUS = {
     APPROVE: 'APPROVE',
     REJECT: 'REJECT',
     REOPEN: 'REOPEN',
     CLOSE: 'CLOSE',
-    PENDING: 'PENDING'
+    PENDING: 'PENDING',
+    RUNNING: 'RUNNING'
 };
 
-// Tab Panel Component
 function TabPanel({ children, value, index, ...other }) {
     return (
         <div
@@ -116,7 +108,6 @@ function TabPanel({ children, value, index, ...other }) {
     );
 }
 
-// Styled Components
 const SectionCard = ({ children, title, icon: Icon, ...props }) => (
     <Paper
         elevation={0}
@@ -213,7 +204,6 @@ const InfoItem = ({ label, value, icon: Icon }) => (
     </Box>
 );
 
-// Add Task Dialog Component
 function AddTaskDialog({ open, onClose, projectId, employees, onSuccess }) {
     const [taskDescription, setTaskDescription] = useState("");
     const [employeeId, setEmployeeId] = useState("");
@@ -332,7 +322,6 @@ function AddTaskDialog({ open, onClose, projectId, employees, onSuccess }) {
     );
 }
 
-// Add Task Action Dialog
 function AddTaskActionDialog({ open, onClose, taskId, onSuccess }) {
     const [actionDescription, setActionDescription] = useState("");
     const [taskActionStatus, setTaskActionStatus] = useState(TASK_ACTION_STATUS.PENDING);
@@ -422,7 +411,6 @@ function AddTaskActionDialog({ open, onClose, taskId, onSuccess }) {
     );
 }
 
-// Task Details Dialog
 function TaskDetailsDialog({ open, onClose, task, onRefresh, canAddAction }) {
     const [taskActions, setTaskActions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -482,14 +470,12 @@ function TaskDetailsDialog({ open, onClose, task, onRefresh, canAddAction }) {
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={3}>
-                        {/* Task Description */}
                         <Paper sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2 }}>
                             <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
                                 {task?.taskDescription}
                             </Typography>
                         </Paper>
 
-                        {/* Task Info Grid */}
                         <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
                                 <InfoItem
@@ -528,12 +514,10 @@ function TaskDetailsDialog({ open, onClose, task, onRefresh, canAddAction }) {
                             </Grid>
                         </Grid>
 
-                        {/* Task Actions Section */}
                         <Divider>
                             <Chip label="Task Actions" icon={TimelineIcon} />
                         </Divider>
 
-                        {/* Add Action Button */}
                         {canAddAction && (
                             <Button
                                 variant="outlined"
@@ -545,7 +529,6 @@ function TaskDetailsDialog({ open, onClose, task, onRefresh, canAddAction }) {
                             </Button>
                         )}
 
-                        {/* Actions List */}
                         {loading ? (
                             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
                                 <CircularProgress />
@@ -600,14 +583,12 @@ function TaskDetailsDialog({ open, onClose, task, onRefresh, canAddAction }) {
     );
 }
 
-// Main Component
 const ProjectDetailsPage = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { can } = useAccess();
     const theme = useTheme();
 
-    // Data state
     const [project, setProject] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -615,13 +596,14 @@ const ProjectDetailsPage = () => {
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState("");
     const [tabValue, setTabValue] = useState(0);
-
-    // Dialog states
     const [addTaskOpen, setAddTaskOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
     const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
-    // Load project data
+    const canViewProjectAnalytics = can("PROJECT_ANALYTICS");
+    const canViewTaskAnalytics = can("TASK_ANALYTICS");
+    const canViewAnyAnalytics = canViewProjectAnalytics || canViewTaskAnalytics;
+
     useEffect(() => {
         loadProjectData();
     }, [id]);
@@ -631,17 +613,14 @@ const ProjectDetailsPage = () => {
         setError(null);
 
         try {
-            // Load project details
             const projectRes = await viewProject(id);
             setProject(projectRes.data.data);
 
-            // Load tasks
             if (can("TASK_VIEW") || can("TASK_VIEW_ALL")) {
                 const tasksRes = await getTasksByProject(id);
                 setTasks(tasksRes.data.data || []);
             }
 
-            // Load employees for task assignment (ADMIN, MANAGER, EMPLOYEE roles)
             if (can("TASK_CREATE")) {
                 try {
                     const employeesRes = await getUsersByRole("EMPLOYEE");
@@ -705,12 +684,8 @@ const ProjectDetailsPage = () => {
         setTabValue(newValue);
     };
 
-    // Get latest action status for a task
-    // Get latest action status for a task (sorted by date)
     const getLatestActionStatus = (task) => {
-        // Check if task has taskActions array and it's not empty
         if (task.taskActions && task.taskActions.length > 0) {
-            // Sort actions by actionAt date (most recent first) and get the first one
             const sortedActions = [...task.taskActions].sort((a, b) =>
                 new Date(b.actionAt) - new Date(a.actionAt)
             );
@@ -719,7 +694,6 @@ const ProjectDetailsPage = () => {
         return 'PENDING';
     };
 
-    // Get status color for action status
     const getActionStatusColor = (status) => {
         switch(status) {
             case TASK_ACTION_STATUS.APPROVE: return 'success';
@@ -740,7 +714,6 @@ const ProjectDetailsPage = () => {
         }
     };
 
-    // Analytics calculations based on latest action status
     const getTaskAnalytics = () => {
         const totalTasks = tasks.length;
         const pendingTasks = tasks.filter(t => {
@@ -809,16 +782,22 @@ const ProjectDetailsPage = () => {
     }
 
     const taskAnalytics = getTaskAnalytics();
-
-    // Permission checks
     const canCreateTask = can("TASK_CREATE");
     const canViewTasks = can("TASK_VIEW") || can("TASK_VIEW_ALL");
     const canAddTaskAction = can("TASK_ACTION_CREATE");
 
+    const visibleTabs = [];
+    visibleTabs.push({ value: 0, label: "Tasks", icon: <TaskIcon /> });
+
+    if (canViewAnyAnalytics) {
+        visibleTabs.push({ value: 1, label: "Analytics", icon: <BarChartIcon /> });
+    }
+
+    visibleTabs.push({ value: 2, label: "Information", icon: <InfoIcon /> });
+
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Container maxWidth="xl" sx={{ py: 4 }}>
-                {/* Header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4, flexWrap: 'wrap', gap: 2 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <IconButton
@@ -852,7 +831,6 @@ const ProjectDetailsPage = () => {
                     </Box>
                 </Box>
 
-                {/* Alerts */}
                 {error && (
                     <Alert
                         severity="error"
@@ -872,7 +850,6 @@ const ProjectDetailsPage = () => {
                     </Alert>
                 )}
 
-                {/* Tabs */}
                 <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
                     <Tabs
                         value={tabValue}
@@ -894,16 +871,14 @@ const ProjectDetailsPage = () => {
                             }
                         }}
                     >
-                        <Tab icon={<TaskIcon />} label="Tasks" iconPosition="start" />
-                        <Tab icon={<BarChartIcon />} label="Analytics" iconPosition="start" />
-                        <Tab icon={<InfoIcon />} label="Information" iconPosition="start" />
+                        {visibleTabs.map((tab) => (
+                            <Tab key={tab.value} icon={tab.icon} label={tab.label} iconPosition="start" />
+                        ))}
                     </Tabs>
 
-                    {/* Tasks Tab */}
                     <TabPanel value={tabValue} index={0}>
                         <Box sx={{ p: 3 }}>
                             <Stack spacing={3}>
-                                {/* Header with Add Task Button */}
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
                                     <Typography variant="h5" fontWeight="600">
                                         Project Tasks
@@ -920,7 +895,6 @@ const ProjectDetailsPage = () => {
                                     )}
                                 </Box>
 
-                                {/* Tasks List */}
                                 {!canViewTasks ? (
                                     <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
                                         <AssignmentIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
@@ -1012,103 +986,101 @@ const ProjectDetailsPage = () => {
                         </Box>
                     </TabPanel>
 
-                    {/* Analytics Tab */}
-                    <TabPanel value={tabValue} index={1}>
-                        <Box sx={{ p: 3 }}>
-                            <Grid container spacing={3}>
-                                <Grid item xs={12}>
-                                    <SectionCard title="Task Analytics (Based on Latest Action Status)" icon={BarChartIcon}>
-                                        <Grid container spacing={2}>
-                                            <Grid item xs={12} sm={6} md={2.4}>
-                                                <StatCard
-                                                    title="Total Tasks"
-                                                    value={taskAnalytics.totalTasks}
-                                                    color="primary"
-                                                />
+                    {canViewAnyAnalytics && (
+                        <TabPanel value={tabValue} index={1}>
+                            <Box sx={{ p: 3 }}>
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12}>
+                                        <SectionCard title="Task Analytics (Based on Latest Action Status)" icon={BarChartIcon}>
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={12} sm={6} md={2.4}>
+                                                    <StatCard
+                                                        title="Total Tasks"
+                                                        value={taskAnalytics.totalTasks}
+                                                        color="primary"
+                                                    />
+                                                </Grid>
+                                                <Grid item xs={12} sm={6} md={2.4}>
+                                                    <StatCard
+                                                        title="Pending"
+                                                        value={taskAnalytics.pendingTasks}
+                                                        color="warning"
+                                                        subtitle={`${taskAnalytics.totalTasks > 0 ? ((taskAnalytics.pendingTasks / taskAnalytics.totalTasks) * 100).toFixed(1) : 0}%`}
+                                                    />
+                                                </Grid>
+                                                <Grid item xs={12} sm={6} md={2.4}>
+                                                    <StatCard
+                                                        title="Approved"
+                                                        value={taskAnalytics.approvedTasks}
+                                                        color="success"
+                                                        subtitle={`${taskAnalytics.approvalRate}%`}
+                                                    />
+                                                </Grid>
+                                                <Grid item xs={12} sm={6} md={2.4}>
+                                                    <StatCard
+                                                        title="Rejected"
+                                                        value={taskAnalytics.rejectedTasks}
+                                                        color="error"
+                                                        subtitle={`${taskAnalytics.totalTasks > 0 ? ((taskAnalytics.rejectedTasks / taskAnalytics.totalTasks) * 100).toFixed(1) : 0}%`}
+                                                    />
+                                                </Grid>
+                                                <Grid item xs={12} sm={6} md={2.4}>
+                                                    <StatCard
+                                                        title="Closed"
+                                                        value={taskAnalytics.closedTasks}
+                                                        color="info"
+                                                        subtitle={`${taskAnalytics.totalTasks > 0 ? ((taskAnalytics.closedTasks / taskAnalytics.totalTasks) * 100).toFixed(1) : 0}%`}
+                                                    />
+                                                </Grid>
                                             </Grid>
-                                            <Grid item xs={12} sm={6} md={2.4}>
-                                                <StatCard
-                                                    title="Pending"
-                                                    value={taskAnalytics.pendingTasks}
-                                                    color="warning"
-                                                    subtitle={`${taskAnalytics.totalTasks > 0 ? ((taskAnalytics.pendingTasks / taskAnalytics.totalTasks) * 100).toFixed(1) : 0}%`}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={2.4}>
-                                                <StatCard
-                                                    title="Approved"
-                                                    value={taskAnalytics.approvedTasks}
-                                                    color="success"
-                                                    subtitle={`${taskAnalytics.approvalRate}%`}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={2.4}>
-                                                <StatCard
-                                                    title="Rejected"
-                                                    value={taskAnalytics.rejectedTasks}
-                                                    color="error"
-                                                    subtitle={`${taskAnalytics.totalTasks > 0 ? ((taskAnalytics.rejectedTasks / taskAnalytics.totalTasks) * 100).toFixed(1) : 0}%`}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={12} sm={6} md={2.4}>
-                                                <StatCard
-                                                    title="Closed"
-                                                    value={taskAnalytics.closedTasks}
-                                                    color="info"
-                                                    subtitle={`${taskAnalytics.totalTasks > 0 ? ((taskAnalytics.closedTasks / taskAnalytics.totalTasks) * 100).toFixed(1) : 0}%`}
-                                                />
-                                            </Grid>
-                                        </Grid>
 
-                                        {/* Task Status Distribution */}
-                                        <Box sx={{ mt: 3 }}>
-                                            <Typography variant="subtitle1" fontWeight="600" gutterBottom>
-                                                Latest Action Status Distribution
-                                            </Typography>
-                                            <Stack spacing={2}>
-                                                {[
-                                                    { status: 'PENDING', count: taskAnalytics.pendingTasks, color: 'warning' },
-                                                    { status: 'APPROVE', count: taskAnalytics.approvedTasks, color: 'success' },
-                                                    { status: 'REJECT', count: taskAnalytics.rejectedTasks, color: 'error' },
-                                                    { status: 'CLOSE', count: taskAnalytics.closedTasks, color: 'info' },
-                                                    { status: 'REOPEN', count: taskAnalytics.reopenedTasks, color: 'warning' }
-                                                ].map(item => {
-                                                    const percentage = taskAnalytics.totalTasks > 0 ? (item.count / taskAnalytics.totalTasks) * 100 : 0;
-                                                    if (item.count === 0 && percentage === 0) return null;
-                                                    return (
-                                                        <Box key={item.status}>
-                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                                                <Typography variant="body2">{item.status}</Typography>
-                                                                <Typography variant="body2" fontWeight="600">
-                                                                    {item.count} ({percentage.toFixed(1)}%)
-                                                                </Typography>
+                                            <Box sx={{ mt: 3 }}>
+                                                <Typography variant="subtitle1" fontWeight="600" gutterBottom>
+                                                    Latest Action Status Distribution
+                                                </Typography>
+                                                <Stack spacing={2}>
+                                                    {[
+                                                        { status: 'PENDING', count: taskAnalytics.pendingTasks, color: 'warning' },
+                                                        { status: 'APPROVE', count: taskAnalytics.approvedTasks, color: 'success' },
+                                                        { status: 'REJECT', count: taskAnalytics.rejectedTasks, color: 'error' },
+                                                        { status: 'CLOSE', count: taskAnalytics.closedTasks, color: 'info' },
+                                                        { status: 'REOPEN', count: taskAnalytics.reopenedTasks, color: 'warning' }
+                                                    ].map(item => {
+                                                        const percentage = taskAnalytics.totalTasks > 0 ? (item.count / taskAnalytics.totalTasks) * 100 : 0;
+                                                        if (item.count === 0 && percentage === 0) return null;
+                                                        return (
+                                                            <Box key={item.status}>
+                                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                                    <Typography variant="body2">{item.status}</Typography>
+                                                                    <Typography variant="body2" fontWeight="600">
+                                                                        {item.count} ({percentage.toFixed(1)}%)
+                                                                    </Typography>
+                                                                </Box>
+                                                                <LinearProgress
+                                                                    variant="determinate"
+                                                                    value={percentage}
+                                                                    color={item.color}
+                                                                    sx={{
+                                                                        height: 8,
+                                                                        borderRadius: 4,
+                                                                        bgcolor: alpha(theme.palette[item.color].main, 0.1)
+                                                                    }}
+                                                                />
                                                             </Box>
-                                                            <LinearProgress
-                                                                variant="determinate"
-                                                                value={percentage}
-                                                                color={item.color}
-                                                                sx={{
-                                                                    height: 8,
-                                                                    borderRadius: 4,
-                                                                    bgcolor: alpha(theme.palette[item.color].main, 0.1)
-                                                                }}
-                                                            />
-                                                        </Box>
-                                                    );
-                                                })}
-                                            </Stack>
-                                        </Box>
-                                    </SectionCard>
+                                                        );
+                                                    })}
+                                                </Stack>
+                                            </Box>
+                                        </SectionCard>
+                                    </Grid>
                                 </Grid>
-                            </Grid>
-                        </Box>
-                    </TabPanel>
+                            </Box>
+                        </TabPanel>
+                    )}
 
-                    {/* Information Tab */}
-                    <TabPanel value={tabValue} index={2}>
+                    <TabPanel value={tabValue} index={canViewAnyAnalytics ? 2 : 1}>
                         <Box sx={{ p: 3 }}>
                             <Grid container spacing={3}>
-                                {/* Basic Information */}
                                 <Grid item xs={12}>
                                     <SectionCard title="Basic Information" icon={InfoIcon}>
                                         <Grid container spacing={2}>
@@ -1170,34 +1142,34 @@ const ProjectDetailsPage = () => {
                                     </SectionCard>
                                 </Grid>
 
-                                {/* Statistics Summary */}
-                                <Grid item xs={12}>
-                                    <SectionCard title="Statistics Summary" icon={BarChartIcon}>
-                                        <Grid container spacing={2}>
-                                            <Grid item xs={12} sm={6}>
-                                                <StatCard
-                                                    title="Total Tasks"
-                                                    value={taskAnalytics.totalTasks}
-                                                    color="primary"
-                                                />
+                                {canViewProjectAnalytics && (
+                                    <Grid item xs={12}>
+                                        <SectionCard title="Statistics Summary" icon={BarChartIcon}>
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={12} sm={6}>
+                                                    <StatCard
+                                                        title="Total Tasks"
+                                                        value={taskAnalytics.totalTasks}
+                                                        color="primary"
+                                                    />
+                                                </Grid>
+                                                <Grid item xs={12} sm={6}>
+                                                    <StatCard
+                                                        title="Project Age"
+                                                        value={project.createdAt ? Math.ceil((new Date() - new Date(project.createdAt)) / (1000 * 60 * 60 * 24)) : 0}
+                                                        color="info"
+                                                        subtitle="days"
+                                                    />
+                                                </Grid>
                                             </Grid>
-                                            <Grid item xs={12} sm={6}>
-                                                <StatCard
-                                                    title="Project Age"
-                                                    value={project.createdAt ? Math.ceil((new Date() - new Date(project.createdAt)) / (1000 * 60 * 60 * 24)) : 0}
-                                                    color="info"
-                                                    subtitle="days"
-                                                />
-                                            </Grid>
-                                        </Grid>
-                                    </SectionCard>
-                                </Grid>
+                                        </SectionCard>
+                                    </Grid>
+                                )}
                             </Grid>
                         </Box>
                     </TabPanel>
                 </Paper>
 
-                {/* Dialogs */}
                 <AddTaskDialog
                     open={addTaskOpen}
                     onClose={() => setAddTaskOpen(false)}

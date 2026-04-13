@@ -23,7 +23,7 @@ import {
 } from "@mui/icons-material";
 import { createUser, updateUser } from "./userService";
 
-const roles = ["ADMIN", "MANAGER", "MEMBER"];
+const roles = ["ADMIN", "MANAGER", "EMPLOYEE"];
 
 const initialState = {
     name: "",

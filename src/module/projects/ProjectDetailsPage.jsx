@@ -36,6 +36,11 @@ import {
     TableContainer,
     TableHead,
     TableRow,
+    InputAdornment,
+    FormControlLabel,
+    Radio,
+    RadioGroup,
+    Badge
 } from "@mui/material";
 import {
     ArrowBack as ArrowBackIcon,
@@ -57,7 +62,10 @@ import {
     Email as EmailIcon,
     DateRange as DateRangeIcon,
     Replay as ReplayIcon,
-    Close as CloseIcon
+    Close as CloseIcon,
+    Search as SearchIcon,
+    FilterList as FilterListIcon,
+    Clear as ClearIcon
 } from "@mui/icons-material";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -600,6 +608,10 @@ const ProjectDetailsPage = () => {
     const [selectedTask, setSelectedTask] = useState(null);
     const [taskDetailsOpen, setTaskDetailsOpen] = useState(false);
 
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState("ALL");
+    const [filteredTasks, setFilteredTasks] = useState([]);
+
     const canViewProjectAnalytics = can("PROJECT_ANALYTICS");
     const canViewTaskAnalytics = can("TASK_ANALYTICS");
     const canViewAnyAnalytics = canViewProjectAnalytics || canViewTaskAnalytics;
@@ -607,6 +619,65 @@ const ProjectDetailsPage = () => {
     useEffect(() => {
         loadProjectData();
     }, [id]);
+
+    useEffect(() => {
+        let filtered = [...tasks];
+
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            filtered = filtered.filter(task =>
+                task.taskDescription?.toLowerCase().includes(query)
+            );
+        }
+
+        if (statusFilter !== "ALL") {
+            filtered = filtered.filter(task => {
+                const latestStatus = getLatestActionStatus(task);
+                return latestStatus === statusFilter;
+            });
+        }
+
+        setFilteredTasks(filtered);
+    }, [searchQuery, statusFilter, tasks]);
+
+    const highlightText = (text, query) => {
+        if (!query || !text) return text;
+
+        const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const parts = text.split(new RegExp(`(${escapedQuery})`, 'gi'));
+
+        return (
+            <>
+                {parts.map((part, index) =>
+                    part.toLowerCase() === query.toLowerCase() ? (
+                        <span
+                            key={index}
+                            style={{
+                                backgroundColor: alpha(theme.palette.warning.main, 0.3),
+                                fontWeight: 'bold',
+                                padding: '0 2px',
+                                borderRadius: '3px'
+                            }}
+                        >
+                            {part}
+                        </span>
+                    ) : (
+                        <span key={index}>{part}</span>
+                    )
+                )}
+            </>
+        );
+    };
+
+    const clearFilters = () => {
+        setSearchQuery("");
+        setStatusFilter("ALL");
+    };
+
+    const getStatusCount = (status) => {
+        if (status === "ALL") return tasks.length;
+        return tasks.filter(task => getLatestActionStatus(task) === status).length;
+    };
 
     const loadProjectData = async () => {
         setLoading(true);
@@ -876,7 +947,7 @@ const ProjectDetailsPage = () => {
                         ))}
                     </Tabs>
 
-                    <TabPanel value={tabValue} index={0}>
+                    {/*<TabPanel value={tabValue} index={0}>
                         <Box sx={{ p: 3 }}>
                             <Stack spacing={3}>
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
@@ -981,6 +1052,306 @@ const ProjectDetailsPage = () => {
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
+                                )}
+                            </Stack>
+                        </Box>
+                    </TabPanel>*/}
+
+                    <TabPanel value={tabValue} index={0}>
+                        <Box sx={{ p: 3 }}>
+                            <Stack spacing={3}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+                                    <Typography variant="h5" fontWeight="600">
+                                        Project Tasks
+                                    </Typography>
+                                    {canCreateTask && (
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<AddIcon />}
+                                            onClick={() => setAddTaskOpen(true)}
+                                            sx={{ borderRadius: 2 }}
+                                        >
+                                            Add Task
+                                        </Button>
+                                    )}
+                                </Box>
+
+                                {/* Search and Filter Section */}
+                                {canViewTasks && tasks.length > 0 && (
+                                    <Paper
+                                        elevation={0}
+                                        sx={{
+                                            p: 2,
+                                            borderRadius: 2,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            bgcolor: alpha(theme.palette.background.default, 0.5)
+                                        }}
+                                    >
+                                        <Grid container spacing={2} alignItems="center">
+                                            {/* Search Field */}
+                                            <Grid item xs={12} md={5}>
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    placeholder="Search by task description..."
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    InputProps={{
+                                                        startAdornment: (
+                                                            <InputAdornment position="start">
+                                                                <SearchIcon color="action" />
+                                                            </InputAdornment>
+                                                        ),
+                                                        endAdornment: searchQuery && (
+                                                            <InputAdornment position="end">
+                                                                <IconButton size="small" onClick={() => setSearchQuery("")}>
+                                                                    <ClearIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </InputAdornment>
+                                                        )
+                                                    }}
+                                                />
+                                            </Grid>
+
+                                            {/* Status Filter */}
+                                            <Grid item xs={12} md={5}>
+                                                <FormControl fullWidth size="small">
+                                                    <Select
+                                                        value={statusFilter}
+                                                        onChange={(e) => setStatusFilter(e.target.value)}
+                                                        displayEmpty
+                                                        startAdornment={
+                                                            <InputAdornment position="start">
+                                                                <FilterListIcon color="action" />
+                                                            </InputAdornment>
+                                                        }
+                                                    >
+                                                        <MenuItem value="ALL">
+                                                            <Badge
+                                                                badgeContent={getStatusCount("ALL")}
+                                                                color="primary"
+                                                                sx={{ mr: 1 }}
+                                                            >
+                                                                All Statuses
+                                                            </Badge>
+                                                        </MenuItem>
+                                                        <MenuItem value={TASK_ACTION_STATUS.PENDING}>
+                                                            <Badge
+                                                                badgeContent={getStatusCount(TASK_ACTION_STATUS.PENDING)}
+                                                                color="warning"
+                                                                sx={{ mr: 1 }}
+                                                            >
+                                                                Pending
+                                                            </Badge>
+                                                        </MenuItem>
+                                                        <MenuItem value={TASK_ACTION_STATUS.APPROVE}>
+                                                            <Badge
+                                                                badgeContent={getStatusCount(TASK_ACTION_STATUS.APPROVE)}
+                                                                color="success"
+                                                                sx={{ mr: 1 }}
+                                                            >
+                                                                Approved
+                                                            </Badge>
+                                                        </MenuItem>
+                                                        <MenuItem value={TASK_ACTION_STATUS.REJECT}>
+                                                            <Badge
+                                                                badgeContent={getStatusCount(TASK_ACTION_STATUS.REJECT)}
+                                                                color="error"
+                                                                sx={{ mr: 1 }}
+                                                            >
+                                                                Rejected
+                                                            </Badge>
+                                                        </MenuItem>
+                                                        <MenuItem value={TASK_ACTION_STATUS.CLOSE}>
+                                                            <Badge
+                                                                badgeContent={getStatusCount(TASK_ACTION_STATUS.CLOSE)}
+                                                                color="info"
+                                                                sx={{ mr: 1 }}
+                                                            >
+                                                                Closed
+                                                            </Badge>
+                                                        </MenuItem>
+                                                        <MenuItem value={TASK_ACTION_STATUS.REOPEN}>
+                                                            <Badge
+                                                                badgeContent={getStatusCount(TASK_ACTION_STATUS.REOPEN)}
+                                                                color="warning"
+                                                                sx={{ mr: 1 }}
+                                                            >
+                                                                Reopened
+                                                            </Badge>
+                                                        </MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+
+                                            {/* Clear Filters Button */}
+                                            <Grid item xs={12} md={2}>
+                                                <Button
+                                                    fullWidth
+                                                    variant="outlined"
+                                                    size="medium"
+                                                    onClick={clearFilters}
+                                                    disabled={!searchQuery && statusFilter === "ALL"}
+                                                    startIcon={<ClearIcon />}
+                                                    sx={{ borderRadius: 2 }}
+                                                >
+                                                    Clear Filters
+                                                </Button>
+                                            </Grid>
+                                        </Grid>
+
+                                        {/* Active Filters Display */}
+                                        {(searchQuery || statusFilter !== "ALL") && (
+                                            <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                                <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
+                                                    Active filters:
+                                                </Typography>
+                                                {searchQuery && (
+                                                    <Chip
+                                                        label={`Search: ${searchQuery}`}
+                                                        size="small"
+                                                        onDelete={() => setSearchQuery("")}
+                                                        sx={{ borderRadius: 1 }}
+                                                    />
+                                                )}
+                                                {statusFilter !== "ALL" && (
+                                                    <Chip
+                                                        label={`Status: ${statusFilter}`}
+                                                        size="small"
+                                                        onDelete={() => setStatusFilter("ALL")}
+                                                        color={getActionStatusColor(statusFilter)}
+                                                        sx={{ borderRadius: 1 }}
+                                                    />
+                                                )}
+                                            </Box>
+                                        )}
+                                    </Paper>
+                                )}
+
+                                {!canViewTasks ? (
+                                    <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+                                        <AssignmentIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                                            Access Denied
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            You don't have permission to view tasks.
+                                        </Typography>
+                                    </Paper>
+                                ) : tasks.length === 0 ? (
+                                    <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+                                        <TaskIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                                            No Tasks Found
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {canCreateTask
+                                                ? "Click the 'Add Task' button to create your first task."
+                                                : "No tasks have been created for this project yet."}
+                                        </Typography>
+                                    </Paper>
+                                ) : filteredTasks.length === 0 ? (
+                                    <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+                                        <SearchIcon sx={{ fontSize: 80, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                                            No Matching Tasks
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            No tasks match your search criteria. Try adjusting your filters.
+                                        </Typography>
+                                        <Button
+                                            variant="outlined"
+                                            onClick={clearFilters}
+                                            sx={{ mt: 2 }}
+                                            startIcon={<ClearIcon />}
+                                        >
+                                            Clear All Filters
+                                        </Button>
+                                    </Paper>
+                                ) : (
+                                    <>
+                                        {/* Results Summary */}
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Showing {filteredTasks.length} of {tasks.length} tasks
+                                            </Typography>
+                                            {(searchQuery || statusFilter !== "ALL") && (
+                                                <Button size="small" onClick={clearFilters} startIcon={<ClearIcon />}>
+                                                    Clear Filters
+                                                </Button>
+                                            )}
+                                        </Box>
+
+                                        <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                                            <Table>
+                                                <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                    <TableRow>
+                                                        <TableCell><Typography fontWeight="600">Task Description</Typography></TableCell>
+                                                        <TableCell><Typography fontWeight="600">Assigned To</Typography></TableCell>
+                                                        <TableCell><Typography fontWeight="600">Due Date</Typography></TableCell>
+                                                        <TableCell><Typography fontWeight="600">Latest Action Status</Typography></TableCell>
+                                                        <TableCell><Typography fontWeight="600">Actions</Typography></TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {filteredTasks.map((task) => {
+                                                        const latestStatus = getLatestActionStatus(task);
+                                                        return (
+                                                            <TableRow key={task.id} hover>
+                                                                <TableCell sx={{ maxWidth: 300 }}>
+                                                                    <Typography variant="body2" sx={{
+                                                                        overflow: 'hidden',
+                                                                        textOverflow: 'ellipsis',
+                                                                        display: '-webkit-box',
+                                                                        WebkitLineClamp: 2,
+                                                                        WebkitBoxOrient: 'vertical'
+                                                                    }}>
+                                                                        {/* Highlight matching text in search results */}
+                                                                        {searchQuery ? (
+                                                                            highlightText(task.taskDescription, searchQuery)
+                                                                        ) : (
+                                                                            task.taskDescription
+                                                                        )}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                        <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.secondary.main }}>
+                                                                            {task.employee?.name?.charAt(0) || '?'}
+                                                                        </Avatar>
+                                                                        <Typography variant="body2">{task.employee?.name || 'Unassigned'}</Typography>
+                                                                    </Box>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {task.taskDoneDate ? new Date(task.taskDoneDate).toLocaleDateString() : 'Not set'}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Chip
+                                                                        icon={getActionStatusIcon(latestStatus)}
+                                                                        label={latestStatus}
+                                                                        size="small"
+                                                                        color={getActionStatusColor(latestStatus)}
+                                                                    />
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Tooltip title="View Details">
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            onClick={() => handleViewTask(task)}
+                                                                            color="primary"
+                                                                        >
+                                                                            <VisibilityIcon />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    </>
                                 )}
                             </Stack>
                         </Box>
